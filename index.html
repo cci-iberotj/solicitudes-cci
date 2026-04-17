@@ -590,6 +590,77 @@ input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inse
 }
 .cal-selected-label span { color: var(--r0); font-weight: 700; }
 
+
+/* Sección evento dentro de Diseño */
+.dyn-evento-wrap {
+  margin-top: 8px;
+  border-top: 2px solid var(--glass-bd2);
+  padding-top: 24px;
+  animation: slideDown .25s ease;
+}
+.dyn-evento-lbl {
+  font-size: 1rem; font-weight: 800;
+  color: var(--text-dim); letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 4px;
+}
+.dyn-evento-lbl::before { content: '→'; color: var(--r0); font-size: 1rem; }
+
+
+/* Categorías de diseño */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cat-card {
+  position: relative;
+  border: 1.5px solid var(--glass-bd);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--glass);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transition: border-color .18s, background .18s, box-shadow .18s, transform .15s;
+  display: flex; align-items: center; gap: 10px;
+  user-select: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+}
+.cat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%);
+  pointer-events: none;
+}
+.cat-card:hover { border-color: rgba(255,255,255,0.95); background: rgba(255,255,255,0.80); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(180,60,40,0.10), inset 0 1px 0 rgba(255,255,255,1); }
+.cat-card:has(input:checked) { border-color: var(--glass-sel-bd); background: rgba(255,255,255,0.78); box-shadow: 0 0 0 2px var(--glass-sel-bd), 0 8px 24px rgba(224,0,52,0.12), inset 0 1px 0 white; transform: translateY(-2px); }
+.cat-card input[type="radio"] { display: none; }
+.cat-emoji { font-size: 1.3rem; flex-shrink: 0; }
+.cat-nombre { font-size: .88rem; font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.01em; position: relative; z-index: 1; }
+.cat-card:has(input:checked) .cat-nombre { color: var(--r2); }
+
+/* Sección condicional dentro de Diseño */
+.diseno-cond {
+  display: none;
+  grid-column: 1 / -1;
+  animation: slideDown .25s ease;
+  border-top: 2px solid var(--glass-bd2);
+  padding-top: 24px;
+  margin-top: 8px;
+}
+.diseno-cond.on { display: contents; }
+.diseno-cond-titulo { grid-column: 1 / -1; font-size: .80rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--r0); margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+.diseno-cond-titulo::after { content: ""; flex: 1; height: 1px; background: var(--glass-bd2); }
+.diseno-cond-titulo {
+  grid-column: 1 / -1;
+  font-size: .80rem; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--r0); margin-bottom: 4px;
+  display: flex; align-items: center; gap: 10px;
+}
+.diseno-cond-titulo::after { content: ''; flex: 1; height: 1px; background: var(--glass-bd2); }
+
 </style>
 </head>
 <body>
@@ -692,46 +763,6 @@ input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inse
           </div>
         </label>
 
-      </div>
-
-      <!-- Piezas gráficas sugeridas (solo en Evento) -->
-      <div class="piezas-wrap" id="piezas-wrap">
-        <div class="piezas-lbl">¿Se necesita material gráfico? Márcalo y avisamos a diseño</div>
-        <div class="pieza-cards">
-          <label class="pieza-card-label">
-            <input type="checkbox" name="piezas" value="Banner / Lona / X-banner" onchange="togglePiezaExtra(this,'ev-banner'); onPiezasChange();">
-            <span class="pieza-nombre">Banner / Lona / X-banner</span>
-            <span class="pieza-desc">Impresión grande para el espacio físico del evento.</span>
-            <span class="pieza-check"></span>
-            <div class="pieza-extra" id="ev-banner"><input type="text" name="ev_tam_banner" placeholder="Tamaño requerido, ej. 90×200 cm"></div>
-          </label>
-          <label class="pieza-card-label">
-            <input type="checkbox" name="piezas" value="Flyer impreso" onchange="togglePiezaExtra(this,'ev-fimpreso'); onPiezasChange();">
-            <span class="pieza-nombre">Flyer impreso</span>
-            <span class="pieza-desc">Volante o programa de mano para distribuir en el evento.</span>
-            <span class="pieza-check"></span>
-            <div class="pieza-extra" id="ev-fimpreso"><input type="text" name="ev_tam_fimpreso" placeholder="Tamaño, ej. carta, media carta, A4…"></div>
-          </label>
-          <label class="pieza-card-label">
-            <input type="checkbox" name="piezas" value="Flyer digital" onchange="updateRecip(currentTipo, true); onPiezasChange();">
-            <span class="pieza-nombre">Flyer digital</span>
-            <span class="pieza-desc">Imagen para difundir por WhatsApp o correo antes del evento.</span>
-            <span class="pieza-check"></span>
-          </label>
-          <label class="pieza-card-label">
-            <input type="checkbox" name="piezas" value="Infografía" onchange="updateRecip(currentTipo, true); onPiezasChange();">
-            <span class="pieza-nombre">Infografía</span>
-            <span class="pieza-desc">Para explicar visualmente el contenido o programa del evento.</span>
-            <span class="pieza-check"></span>
-          </label>
-          <label class="pieza-card-label">
-            <input type="checkbox" name="piezas" value="Otro" onchange="togglePiezaExtra(this,'ev-otro'); onPiezasChange();">
-            <span class="pieza-nombre">Otro</span>
-            <span class="pieza-desc">No encuentras lo que necesitas — descríbelo.</span>
-            <span class="pieza-check"></span>
-            <div class="pieza-extra" id="ev-otro"><input type="text" name="ev_tam_otro" placeholder="¿Qué necesitas?"></div>
-          </label>
-        </div>
       </div>
 
       <!-- Aviso de tiempos -->
@@ -875,7 +906,7 @@ const LABELS = {
   d_refs:"Referencias de estilo",
   materiales:"Enlace a materiales", notas:"Notas adicionales",
   tam_banner:"Medida banner", tam_fdigital:"Medida flyer digital", tam_fimpreso:"Medida flyer impreso", tam_otro:"Otro (detalle)",
-  ev_tam_banner:"Medida banner", ev_tam_fimpreso:"Medida flyer impreso", ev_tam_otro:"Otro (detalle)", fecha:"Fecha", tipo_evento:"Tipo de evento", lugar_campus:"Espacio en campus", lugar_fuera:"Lugar", lugar_online:"Plataforma online", publico:"Dirigido a",
+  ev_tam_banner:"Medida banner", ev_tam_fimpreso:"Medida flyer impreso", ev_tam_otro:"Otro (detalle)", fecha:"Fecha", ev_nombre:"Evento relacionado", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario del evento", ev_publico:"Dirigido a", ev_lugar_campus:"Espacio en campus", ev_lugar_fuera:"Lugar del evento", ev_lugar_online:"Plataforma", cat_diseno:"Categoría", ev_nombre:"Nombre del evento", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario", ev_publico:"Público", ev_lugar_campus:"Espacio", ev_lugar_fuera:"Lugar", cv_nombre:"Nombre de convocatoria", cv_fecha:"Fecha límite", cv_dirigido:"Dirigido a", cv_requisitos:"Requisitos", camp_objetivo:"Objetivo", camp_mensaje:"Mensaje clave", proy_nombre:"Nombre del proyecto", proy_area:"Área académica", proy_fecha:"Fecha de entrega", otro_desc:"Descripción", tipo_evento:"Tipo de evento", lugar_campus:"Espacio en campus", lugar_fuera:"Lugar", lugar_online:"Plataforma online", publico:"Dirigido a",
 };
 
 /* ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────── */
@@ -887,37 +918,37 @@ var DIR = [{"n": "castro guajardo marysol elideth", "nd": "Castro Guajardo Marys
 /* ─── CAMPOS DINÁMICOS POR TIPO ─────────────────────────────────────────────── */
 function getDyn(tipo) {
 
-  /* Piezas compartidas (Diseño) — sin Post para redes */
+  /* ─── Piezas para Diseño (sin Post para redes) ─── */
   var piezasCards = `
     <div class="pieza-cards">
       <label class="pieza-card-label">
-        <input type="checkbox" name="tipo_pieza" value="Banner / Lona / X-banner" onchange="togglePiezaExtra(this,'ds-banner')">
+        <input type="checkbox" name="tipo_pieza" value="Banner / Lona / X-banner" onchange="togglePiezaExtra(this,'ds-banner'); onDiseñoPiezaChange();">
         <span class="pieza-nombre">Banner / Lona / X-banner</span>
         <span class="pieza-desc">Impresión grande para espacios físicos: pasillos, auditorios, eventos al aire libre.</span>
         <span class="pieza-check"></span>
         <div class="pieza-extra" id="ds-banner"><input type="text" name="tam_banner" placeholder="Tamaño, ej. 90×200 cm"></div>
       </label>
       <label class="pieza-card-label">
-        <input type="checkbox" name="tipo_pieza" value="Flyer impreso" onchange="togglePiezaExtra(this,'ds-fimpreso')">
+        <input type="checkbox" name="tipo_pieza" value="Flyer impreso" onchange="togglePiezaExtra(this,'ds-fimpreso'); onDiseñoPiezaChange();">
         <span class="pieza-nombre">Flyer impreso</span>
         <span class="pieza-desc">Hoja impresa para distribuir físicamente: volante, invitación, programa de mano.</span>
         <span class="pieza-check"></span>
-        <div class="pieza-extra" id="ds-fimpreso"><input type="text" name="tam_fimpreso" placeholder="Tamaño, ej. carta, media carta, A4…"></div>
+        <div class="pieza-extra" id="ds-fimpreso"><input type="text" name="tam_fimpreso" placeholder="Tamaño, ej. carta, A4…"></div>
       </label>
       <label class="pieza-card-label">
-        <input type="checkbox" name="tipo_pieza" value="Flyer digital">
+        <input type="checkbox" name="tipo_pieza" value="Flyer digital" onchange="onDiseñoPiezaChange();">
         <span class="pieza-nombre">Flyer digital</span>
         <span class="pieza-desc">Imagen para compartir por WhatsApp, correo o redes sociales.</span>
         <span class="pieza-check"></span>
       </label>
       <label class="pieza-card-label">
-        <input type="checkbox" name="tipo_pieza" value="Infografía">
+        <input type="checkbox" name="tipo_pieza" value="Infografía" onchange="onDiseñoPiezaChange();">
         <span class="pieza-nombre">Infografía</span>
         <span class="pieza-desc">Visualización de datos, pasos o información que conviene explicar gráficamente.</span>
         <span class="pieza-check"></span>
       </label>
       <label class="pieza-card-label">
-        <input type="checkbox" name="tipo_pieza" value="Otro" onchange="togglePiezaExtra(this,'ds-otro')">
+        <input type="checkbox" name="tipo_pieza" value="Otro" onchange="togglePiezaExtra(this,'ds-otro'); onDiseñoPiezaChange();">
         <span class="pieza-nombre">Otro</span>
         <span class="pieza-desc">No encuentras lo que necesitas aquí — descríbelo.</span>
         <span class="pieza-check"></span>
@@ -930,7 +961,6 @@ function getDyn(tipo) {
       <div class="field ff"><label>Nombre del evento o actividad <span class="req">*</span></label><input type="text" name="titulo" placeholder="Nombre oficial del evento" required><span class="ferr">Requerido.</span></div>
       <div class="field"><label>Fecha del evento <span class="req">*</span></label><div class="cal-wrap" id="cal-evento"></div><span class="ferr" id="ferr-cal-evento" style="display:none">Selecciona una fecha.</span></div>
       <div class="field"><label>Horario</label><input type="text" name="horario" placeholder="Ej. 10:00 – 13:00 hrs"></div>
-
       <div class="field ff">
         <label>Tipo de evento <span class="req">*</span></label>
         <div class="check-group">
@@ -938,25 +968,10 @@ function getDyn(tipo) {
           <label class="check-pill"><input type="radio" name="tipo_evento" value="Fuera del campus" onchange="updateLugar(this.value)"><span class="cp-dot"></span>Fuera del campus</label>
           <label class="check-pill"><input type="radio" name="tipo_evento" value="Online" onchange="updateLugar(this.value)"><span class="cp-dot"></span>Online</label>
         </div>
-        <div class="lugar-cond" id="lugar-campus">
-          <select name="lugar_campus">
-            <option value="">Selecciona el espacio…</option>
-            <option>Aula Magna</option>
-            <option>Auditorio Loyola</option>
-            <option>Sala de Videoconferencias</option>
-            <option>Aldea India</option>
-            <option>Centro Cultural y Deportivo</option>
-            <option>Otro espacio en campus</option>
-          </select>
-        </div>
-        <div class="lugar-cond" id="lugar-fuera">
-          <input type="text" name="lugar_fuera" placeholder="¿En dónde? Escribe el lugar, ciudad o dirección">
-        </div>
-        <div class="lugar-cond" id="lugar-online">
-          <input type="text" name="lugar_online" placeholder="¿Qué plataforma? Ej. Zoom, Teams, YouTube Live…">
-        </div>
+        <div class="lugar-cond" id="lugar-campus"><select name="lugar_campus"><option value="">Selecciona el espacio…</option><option>Aula Magna</option><option>Auditorio Loyola</option><option>Sala de Videoconferencias</option><option>Aldea India</option><option>Centro Cultural y Deportivo</option><option>Otro espacio en campus</option></select></div>
+        <div class="lugar-cond" id="lugar-fuera"><input type="text" name="lugar_fuera" placeholder="¿En dónde? Escribe el lugar, ciudad o dirección"></div>
+        <div class="lugar-cond" id="lugar-online"><input type="text" name="lugar_online" placeholder="¿Qué plataforma? Ej. Zoom, Teams, YouTube Live…"></div>
       </div>
-
       <div class="field ff">
         <label>¿A quién va dirigido?</label>
         <div class="check-group">
@@ -967,7 +982,6 @@ function getDyn(tipo) {
           <label class="check-pill"><input type="checkbox" name="publico" value="Público en general"><span class="cp-dot"></span>Público en general</label>
         </div>
       </div>
-
       <div class="field"><label>Número aproximado de asistentes</label><input type="number" name="d_asist" placeholder="Ej. 80" min="1"></div>
       <div class="field ff"><label>Ponentes, invitadas e invitados relevantes</label><input type="text" name="d_ponentes" placeholder="Nombres y cargos de personas destacadas"></div>
       <div class="field ff"><label>Cuéntanos sobre el evento <span class="req">*</span></label><textarea name="descripcion" placeholder="Cuéntanos todo — de qué trata, quién participa, qué buscan lograr" required></textarea><span class="ferr">Requerido.</span></div>
@@ -975,12 +989,72 @@ function getDyn(tipo) {
 
   if (tipo === "Diseño") return { lbl: "Detalles del material gráfico", html: `
     <div class="fg">
-      <div class="field ff"><label>¿Qué tipo de pieza necesitas?</label>${piezasCards}</div>
-      <div class="field ff"><label>¿Para qué lo necesitas? <span class="req">*</span></label><input type="text" name="titulo" placeholder="Ej. convocatoria de becas, bienvenida de nuevo ingreso…" required><span class="ferr">Requerido.</span></div>
-      <div class="field"><label>¿Para cuándo lo necesitas? <span class="req">*</span></label><div class="cal-wrap" id="cal-diseno"></div><span class="ferr" id="ferr-cal-diseno" style="display:none">Selecciona una fecha.</span></div>
-      <div class="field"><label>¿Dónde se usará?</label><input type="text" name="lugar" placeholder="Ej. entrada del campus, correo institucional…"></div>
-      <div class="field ff"><label>Texto o mensaje que debe comunicar</label><textarea name="descripcion" placeholder="Títulos, fechas, datos de contacto, llamados a la acción…"></textarea></div>
-      <div class="field ff"><label>Referencias de estilo</label><textarea name="d_refs" placeholder="Colores, estilo deseado, ejemplos de referencia…"></textarea></div>
+
+      <div class="field ff">
+        <label>¿Para qué es este material? <span class="req">*</span></label>
+        <div class="cat-grid">
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Conferencia, charla, taller o curso" onchange="onCatDiseno(this.value)" required><span class="cat-emoji">🎤</span><span class="cat-nombre">Conferencia, charla, taller o curso</span></label>
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Concurso o convocatoria" onchange="onCatDiseno(this.value)"><span class="cat-emoji">🏆</span><span class="cat-nombre">Concurso o convocatoria</span></label>
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Ceremonia o graduación" onchange="onCatDiseno(this.value)"><span class="cat-emoji">🎓</span><span class="cat-nombre">Ceremonia o graduación</span></label>
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Feria o exposición" onchange="onCatDiseno(this.value)"><span class="cat-emoji">🤝</span><span class="cat-nombre">Feria o exposición</span></label>
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Comunicado o anuncio interno" onchange="onCatDiseno(this.value)"><span class="cat-emoji">📢</span><span class="cat-nombre">Comunicado o anuncio</span></label>
+          <label class="cat-card"><input type="radio" name="cat_diseno" value="Otro" onchange="onCatDiseno(this.value)"><span class="cat-emoji">✉️</span><span class="cat-nombre">Otro</span></label>
+        </div>
+      </div>
+
+      <!-- EVENTO: Conferencia, Taller, Ceremonia, Feria, Semana -->
+      <div class="diseno-cond" id="dc-evento">
+        <div class="diseno-cond-titulo">Datos del evento</div>
+        <div class="field ff"><label>Nombre del evento <span class="req">*</span></label><input type="text" name="ev_nombre" placeholder="Nombre oficial del evento" required></div>
+        <div class="field">
+          <label>¿Dónde se realizará? <span class="req">*</span></label>
+          <div class="check-group">
+            <label class="check-pill"><input type="radio" name="ev_tipo_lugar" value="Dentro del campus" onchange="updateLugarDs(this.value)"><span class="cp-dot"></span>Dentro del campus</label>
+            <label class="check-pill"><input type="radio" name="ev_tipo_lugar" value="Fuera del campus" onchange="updateLugarDs(this.value)"><span class="cp-dot"></span>Fuera del campus</label>
+            <label class="check-pill"><input type="radio" name="ev_tipo_lugar" value="Online" onchange="updateLugarDs(this.value)"><span class="cp-dot"></span>Online</label>
+          </div>
+          <div class="lugar-cond" id="ds-lugar-campus"><select name="ev_lugar_campus" required><option value="">Selecciona el espacio…</option><option>Aula Magna</option><option>Auditorio Loyola</option><option>Sala de Videoconferencias</option><option>Aldea India</option><option>Centro Cultural y Deportivo</option><option>Otro espacio en campus</option></select></div>
+          <div class="lugar-cond" id="ds-lugar-fuera"><input type="text" name="ev_lugar_fuera" placeholder="Lugar, ciudad o dirección" required></div>
+          <div class="lugar-cond" id="ds-lugar-online"><input type="text" name="ev_lugar_online" placeholder="Plataforma, ej. Zoom, Teams…" required></div>
+        </div>
+        <div class="field"><label>Fecha del evento <span class="req">*</span></label><input type="text" name="ev_fecha_txt" placeholder="Ej. 15 de mayo de 2026" required></div>
+        <div class="field"><label>Horario</label><input type="text" name="ev_horario" placeholder="Ej. 10:00 – 13:00 hrs"></div>
+        <div class="field ff">
+          <label>¿A quién va dirigido?</label>
+          <div class="check-group">
+            <label class="check-pill"><input type="checkbox" name="ev_publico" value="Alumnas y alumnos"><span class="cp-dot"></span>Alumnas y alumnos</label>
+            <label class="check-pill"><input type="checkbox" name="ev_publico" value="Egresadas y egresados"><span class="cp-dot"></span>Egresadas y egresados</label>
+            <label class="check-pill"><input type="checkbox" name="ev_publico" value="Personal administrativo"><span class="cp-dot"></span>Personal administrativo</label>
+            <label class="check-pill"><input type="checkbox" name="ev_publico" value="Docentes"><span class="cp-dot"></span>Docentes</label>
+            <label class="check-pill"><input type="checkbox" name="ev_publico" value="Público en general"><span class="cp-dot"></span>Público en general</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONCURSO / CONVOCATORIA -->
+      <div class="diseno-cond" id="dc-concurso">
+        <div class="diseno-cond-titulo">Datos de la convocatoria</div>
+        <div class="field ff"><label>Nombre del concurso o convocatoria <span class="req">*</span></label><input type="text" name="cv_nombre" placeholder="Nombre oficial" required></div>
+        <div class="field"><label>Fecha límite de participación <span class="req">*</span></label><input type="text" name="cv_fecha" placeholder="Ej. 30 de abril de 2026" required></div>
+        <div class="field"><label>¿A quién va dirigido?</label><input type="text" name="cv_dirigido" placeholder="Ej. alumnas y alumnos de licenciatura"></div>
+        <div class="field ff"><label>Requisitos clave a comunicar</label><textarea name="cv_requisitos" placeholder="Menciona los puntos más importantes que debe saber quién participa…"></textarea></div>
+      </div>
+
+      <!-- OTRO -->
+      <div class="diseno-cond" id="dc-otro-cat">
+        <div class="diseno-cond-titulo">Cuéntanos más</div>
+        <div class="field ff"><label>¿De qué se trata?</label><textarea name="otro_desc" placeholder="Describe el contexto de este material con todo el detalle que puedas…"></textarea></div>
+      </div>
+
+      <!-- CAMPOS COMUNES — aparecen con cualquier categoría -->
+      <div class="diseno-cond" id="dc-comun">
+        <div class="diseno-cond-titulo">Material a solicitar</div>
+        <div class="field ff"><label>¿Qué tipo de pieza necesitas?</label>${piezasCards}</div>
+        <div class="field ff"><label>¿Para cuándo lo necesitas? <span class="req">*</span></label><div class="cal-wrap" id="cal-diseno"></div><span class="ferr" id="ferr-cal-diseno" style="display:none">Selecciona una fecha.</span></div>
+        <div class="field ff"><label>Texto o mensaje que debe llevar el diseño</label><textarea name="descripcion" placeholder="Títulos, fechas, datos de contacto, llamados a la acción…"></textarea></div>
+        <div class="field ff"><label>Referencias de estilo</label><textarea name="d_refs" placeholder="Colores, estilo deseado, ejemplos de referencia…"></textarea></div>
+      </div>
+
     </div>` };
 
   if (tipo === "Actividad que ya ocurrió") return { lbl: "Detalles de lo que ocurrió", html: `
@@ -1010,7 +1084,6 @@ document.querySelectorAll(".tipo-card").forEach(function(c) {
     c.querySelector("input").checked = true;
     currentTipo = c.dataset.tipo;
 
-    document.getElementById("piezas-wrap").classList.toggle("on", currentTipo === "Evento o actividad");
 
     var n = document.getElementById("notice");
     var cfg = NOTICES[currentTipo];
@@ -1115,12 +1188,7 @@ function updateRecip(tipo, checkPiezas) {
   var to = r.to.slice();
   var cc = r.cc.slice();
 
-  if (tipo === "Evento o actividad") {
-    var hayPiezas = document.querySelectorAll("input[name='piezas']:checked").length > 0;
-    var yaEsta    = cc.some(function(p) { return p.name === TEAM.disenio.name; });
-    if (hayPiezas && !yaEsta) cc = cc.concat([TEAM.disenio]);
-    if (!hayPiezas && yaEsta) cc = cc.filter(function(p) { return p.name !== TEAM.disenio.name; });
-  }
+
 
   document.getElementById("chips").innerHTML = to.map(function(p) {
     return '<span class="chip">' + p.name + '</span>';
@@ -1175,6 +1243,12 @@ function validate() {
   document.querySelectorAll("#frm [required]").forEach(function(el) {
     /* Saltar inputs ocultos de calendarios custom */
     if (el.type === "hidden") return;
+    /* Saltar campos dentro de secciones ocultas (.diseno-cond sin .on) */
+    var cond = el.closest(".diseno-cond");
+    if (cond && !cond.classList.contains("on")) return;
+    /* Saltar campos de lugar que no están visibles (.lugar-cond sin .on) */
+    var lugarCond = el.closest(".lugar-cond");
+    if (lugarCond && !lugarCond.classList.contains("on")) return;
     var err  = el.parentElement.querySelector(".ferr");
     var valid = el.checkValidity() && el.value.trim() !== "";
     el.classList.toggle("error", !valid);
@@ -1493,11 +1567,7 @@ function setUrgenciaDisabled(disabled, msg) {
   if (msgEl) { msgEl.textContent = msg || ""; msgEl.classList.toggle("on", disabled && !!msg); }
 }
 
-function onPiezasChange() {
-  updateRecip(currentTipo, true);
-  var hayPiezas = document.querySelectorAll("input[name='piezas']:checked").length > 0;
-  setUrgenciaDisabled(hayPiezas, "La urgencia no aplica cuando se solicitan piezas gráficas — el diseño requiere tiempo de elaboración.");
-}
+function onPiezasChange() { /* ya no se usa */ }
 
 
 /* ─── GOOGLE SHEETS — REGISTRO Y CALENDARIO DE CARGA ─────────────────────────
@@ -1923,6 +1993,59 @@ function refreshCalDates() {
 async function cargarYColorear() {
   cargaMapa = await leerCarga();
   Object.keys(calInstances).forEach(renderCal);
+}
+
+
+/* Mostrar/ocultar sección de evento cuando se marcan piezas en Diseño */
+function onDiseñoPiezaChange() {
+  var seccion = document.getElementById("dyn-evento-diseno");
+  if (!seccion) return;
+  var hayPiezas = document.querySelectorAll("input[name='tipo_pieza']:checked").length > 0;
+  seccion.style.display = hayPiezas ? "block" : "none";
+}
+
+function updateLugarDs(val) {
+  var c = document.getElementById("ds-lugar-campus");
+  var f = document.getElementById("ds-lugar-fuera");
+  var o = document.getElementById("ds-lugar-online");
+  if (c) c.classList.toggle("on", val === "Dentro del campus");
+  if (f) f.classList.toggle("on", val === "Fuera del campus");
+  if (o) o.classList.toggle("on", val === "Online");
+}
+
+
+/* Mostrar sección condicional según categoría de diseño */
+var CAT_EVENTO    = ["Conferencia, charla, taller o curso","Ceremonia o graduación","Feria o exposición"];
+var CAT_CONCURSO  = ["Concurso o convocatoria"];
+var CAT_CAMPANA   = ["Comunicado o anuncio interno"];
+var CAT_PROYECTO  = [];
+
+function onCatDiseno(val) {
+  var ids = ["dc-evento","dc-concurso","dc-campana","dc-proyecto","dc-otro-cat","dc-comun"];
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove("on");
+  });
+
+  var show = [];
+  if (CAT_EVENTO.indexOf(val) >= 0)   show = ["dc-evento","dc-comun"];
+  else if (CAT_CONCURSO.indexOf(val) >= 0) show = ["dc-concurso","dc-comun"];
+  else if (CAT_CAMPANA.indexOf(val) >= 0)  show = ["dc-campana","dc-comun"];
+  else if (CAT_PROYECTO.indexOf(val) >= 0) show = ["dc-proyecto","dc-comun"];
+  else if (val === "Otro")                 show = ["dc-otro-cat","dc-comun"];
+
+  show.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add("on");
+  });
+
+  /* Inicializar calendario si acaba de aparecer */
+  var calEl = document.getElementById("cal-diseno");
+  if (calEl && !calInstances["cal-diseno"]) {
+    initCal("cal-diseno", "fecha");
+    refreshCalDates();
+    cargarYColorear();
+  }
 }
 
 </script>
