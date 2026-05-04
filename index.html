@@ -460,6 +460,90 @@ input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inse
 }
 
 
+
+/* ─── GOOGLE DRIVE — SUBIR ARCHIVOS ──────────────────────────────────────────
+   Sube los archivos cargados por el solicitante a una carpeta de Drive.
+   Devuelve un array de {name, link, size} para incluir en el correo.
+──────────────────────────────────────────────────────────────────────────────*/
+
+async function subirArchivosADrive(archivos, prefijoCarpeta) {
+  if (!archivos || archivos.length === 0) return [];
+
+  var token = await getGToken();
+  var enlaces = [];
+
+  for (var i = 0; i < archivos.length; i++) {
+    var f = archivos[i];
+    try {
+      /* Nombre con prefijo de la solicitud para identificarlo después */
+      var fileName = (prefijoCarpeta || "Aviso") + " - " + f.name;
+
+      /* Multipart upload con metadatos + contenido */
+      var metadata = {
+        name: fileName,
+        parents: [GS.driveFolderId],
+      };
+
+      var boundary = "-------" + Date.now();
+      var delimiter = "\r\n--" + boundary + "\r\n";
+      var closeDelim = "\r\n--" + boundary + "--";
+
+      /* Convertir archivo a base64 */
+      var b64Content = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload  = function() { resolve(reader.result.split(",")[1]); };
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+
+      var body = delimiter
+        + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        + JSON.stringify(metadata)
+        + delimiter
+        + "Content-Type: " + (f.type || "application/octet-stream") + "\r\n"
+        + "Content-Transfer-Encoding: base64\r\n\r\n"
+        + b64Content
+        + closeDelim;
+
+      var res = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "multipart/related; boundary=" + boundary,
+          },
+          body: body
+        }
+      );
+
+      var data = await res.json();
+      if (data.id) {
+        /* Hacer el archivo accesible para cualquiera con el enlace */
+        await fetch(
+          "https://www.googleapis.com/drive/v3/files/" + data.id + "/permissions",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + token,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ role: "reader", type: "anyone" })
+          }
+        );
+        enlaces.push({
+          name: f.name,
+          size: f.size,
+          link: data.webViewLink || ("https://drive.google.com/file/d/" + data.id + "/view"),
+        });
+      }
+    } catch(err) {
+      console.warn("Error subiendo " + f.name + ":", err);
+    }
+  }
+  return enlaces;
+}
+
 /* ─── CALENDARIO CUSTOM ─────────────────────────────────────────────────────── */
 .cal-wrap {
   background: var(--glass);
@@ -661,6 +745,99 @@ input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inse
 }
 .diseno-cond-titulo::after { content: ''; flex: 1; height: 1px; background: var(--glass-bd2); }
 
+
+/* Mockups en piezas de diseño */
+.pieza-card-label { padding: 14px 14px 12px; }
+.pieza-mockup {
+  display: flex; align-items: center; justify-content: center;
+  height: 70px; margin-bottom: 10px;
+  background: rgba(255,255,255,0.45);
+  border: 1px solid var(--glass-bd2);
+  border-radius: 8px;
+  position: relative; overflow: hidden;
+}
+.mock-shape {
+  background: linear-gradient(135deg, var(--gris) 0%, #6b6259 100%);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  position: relative;
+}
+.mock-shape::after {
+  content: ''; position: absolute; top: 22%; left: 18%; right: 18%; height: 8%;
+  background: rgba(255,255,255,0.5); border-radius: 1px;
+}
+.mock-shape::before {
+  content: ''; position: absolute; bottom: 18%; left: 18%; width: 50%; height: 5%;
+  background: rgba(255,255,255,0.35); border-radius: 1px;
+}
+.pieza-card-label:has(input:checked) .mock-shape { background: linear-gradient(135deg, var(--r1) 0%, var(--r0) 100%); }
+
+/* Mockup banner — rectángulo vertical alto */
+.mock-banner { width: 22px; height: 56px; }
+/* Mockup flyer impreso — tipo carta vertical */
+.mock-flyer-imp { width: 38px; height: 50px; }
+/* Mockup flyer digital — cuadrado */
+.mock-flyer-dig { width: 44px; height: 44px; }
+/* Mockup infografía — vertical estrecho con líneas */
+.mock-info { width: 32px; height: 56px; }
+.mock-info::after { top: 10%; height: 5%; }
+.mock-info::before { top: 22%; bottom: auto; left: 12%; width: 60%; height: 4%; box-shadow: 0 8px 0 rgba(255,255,255,0.35), 0 16px 0 rgba(255,255,255,0.35), 0 24px 0 rgba(255,255,255,0.35); }
+/* Mockup otro — interrogación */
+.mock-otro { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.85); font-size: 1.4rem; font-weight: 800; }
+.mock-otro::before, .mock-otro::after { display: none; }
+
+/* Sección unificada de timing + urgencia, junto al calendario */
+.timing-box {
+  margin-top: 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--warn-bd);
+  background: var(--warn-bg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.timing-info {
+  padding: 14px 18px;
+  font-size: .88rem; color: var(--warn-tx); line-height: 1.55;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.timing-info-ico { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.timing-info strong { font-weight: 800; display: block; margin-bottom: 2px; }
+.timing-divider { height: 1px; background: var(--warn-bd); }
+.timing-urg-row {
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; user-select: none;
+  background: rgba(255,255,255,0.35);
+  transition: background .15s;
+}
+.timing-urg-row:hover { background: rgba(255,255,255,0.55); }
+.timing-urg-row.active { background: rgba(232,164,39,0.18); }
+.timing-urg-row.disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+.timing-urg-row .tog { width: 40px; height: 22px; border-radius: 12px; background: rgba(180,100,80,0.25); position: relative; flex-shrink: 0; transition: background .2s; }
+.timing-urg-row .tog::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.timing-urg-row.active .tog { background: rgba(232,164,39,0.6); }
+.timing-urg-row.active .tog::after { transform: translateX(18px); background: #e8a427; }
+.timing-urg-t strong { font-size: .92rem; font-weight: 700; color: var(--text); display: block; }
+.timing-urg-t span { font-size: .80rem; color: var(--text-dim); }
+.timing-disabled-msg {
+  display: none; padding: 10px 18px;
+  font-size: .78rem; color: var(--text-mute);
+  background: rgba(255,255,255,0.4);
+  border-top: 1px solid var(--warn-bd);
+  font-style: italic; line-height: 1.45;
+}
+.timing-disabled-msg.on { display: block; }
+
+/* Texto explicativo de fechas bloqueadas en el calendario */
+.cal-bloqueo-info {
+  padding: 8px 14px 12px;
+  font-size: .72rem; color: var(--text-mute);
+  border-top: 1px solid var(--glass-bd2);
+  line-height: 1.5;
+  font-style: italic;
+}
+.cal-bloqueo-info b { color: var(--text-dim); font-style: normal; }
+
 </style>
 </head>
 <body>
@@ -765,22 +942,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inse
 
       </div>
 
-      <!-- Aviso de tiempos -->
-      <div class="notice" id="notice"></div>
+      
+      
 
-      <!-- Urgencia -->
-      <div class="urg-wrap" id="urg-wrap">
-        <div class="urg-row" id="urg-row" onclick="toggleUrg()">
-          <div class="tog"></div>
-          <div class="urg-t">
-            <strong>Esto es urgente</strong>
-            <span>Necesito respuesta antes del tiempo habitual</span>
-          </div>
-          <span style="font-size:20px;margin-left:auto">⚡</span>
-        </div>
-        <input type="hidden" name="urgente" id="urg-val" value="No">
-      </div>
-      <div id="urg-disabled-msg" class="urg-disabled-msg"></div>
+      <!-- Urgencia: ahora se muestra dentro del calendario en cada tipo -->
+      <input type="hidden" name="urgente" id="urg-val" value="No">
     </div>
 
     <!-- SECCIÓN: DETALLE DINÁMICO -->
@@ -906,7 +1072,7 @@ const LABELS = {
   d_refs:"Referencias de estilo",
   materiales:"Enlace a materiales", notas:"Notas adicionales",
   tam_banner:"Medida banner", tam_fdigital:"Medida flyer digital", tam_fimpreso:"Medida flyer impreso", tam_otro:"Otro (detalle)",
-  ev_tam_banner:"Medida banner", ev_tam_fimpreso:"Medida flyer impreso", ev_tam_otro:"Otro (detalle)", fecha:"Fecha", ev_nombre:"Evento relacionado", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario del evento", ev_publico:"Dirigido a", ev_lugar_campus:"Espacio en campus", ev_lugar_fuera:"Lugar del evento", ev_lugar_online:"Plataforma", cat_diseno:"Categoría", ev_nombre:"Nombre del evento", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario", ev_publico:"Público", ev_lugar_campus:"Espacio", ev_lugar_fuera:"Lugar", cv_nombre:"Nombre de convocatoria", cv_fecha:"Fecha límite", cv_dirigido:"Dirigido a", cv_requisitos:"Requisitos", camp_objetivo:"Objetivo", camp_mensaje:"Mensaje clave", proy_nombre:"Nombre del proyecto", proy_area:"Área académica", proy_fecha:"Fecha de entrega", otro_desc:"Descripción", tipo_evento:"Tipo de evento", lugar_campus:"Espacio en campus", lugar_fuera:"Lugar", lugar_online:"Plataforma online", publico:"Dirigido a",
+  ev_tam_banner:"Medida banner", ev_tam_fimpreso:"Medida flyer impreso", ev_tam_otro:"Otro (detalle)", fecha:"Fecha", ev_nombre:"Evento relacionado", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario del evento", ev_publico:"Dirigido a", ev_lugar_campus:"Espacio en campus", ev_lugar_fuera:"Lugar del evento", ev_lugar_online:"Plataforma", cat_diseno:"Categoría", ev_nombre:"Nombre del evento", ev_fecha_txt:"Fecha del evento", ev_horario:"Horario", ev_publico:"Público", ev_lugar_campus:"Espacio", ev_lugar_fuera:"Lugar", cv_nombre:"Nombre de convocatoria", cv_fecha:"Fecha límite", cv_dirigido:"Dirigido a", cv_requisitos:"Requisitos", cv_enlace:"Enlace a términos completos", camp_objetivo:"Objetivo", camp_mensaje:"Mensaje clave", proy_nombre:"Nombre del proyecto", proy_area:"Área académica", proy_fecha:"Fecha de entrega", otro_desc:"Descripción", tipo_evento:"Tipo de evento", lugar_campus:"Espacio en campus", lugar_fuera:"Lugar", lugar_online:"Plataforma online", publico:"Dirigido a",
 };
 
 /* ─── ESTADO GLOBAL ─────────────────────────────────────────────────────────── */
@@ -923,6 +1089,7 @@ function getDyn(tipo) {
     <div class="pieza-cards">
       <label class="pieza-card-label">
         <input type="checkbox" name="tipo_pieza" value="Banner / Lona / X-banner" onchange="togglePiezaExtra(this,'ds-banner'); onDiseñoPiezaChange();">
+        <div class="pieza-mockup"><div class="mock-shape mock-banner"></div></div>
         <span class="pieza-nombre">Banner / Lona / X-banner</span>
         <span class="pieza-desc">Impresión grande para espacios físicos: pasillos, auditorios, eventos al aire libre.</span>
         <span class="pieza-check"></span>
@@ -930,6 +1097,7 @@ function getDyn(tipo) {
       </label>
       <label class="pieza-card-label">
         <input type="checkbox" name="tipo_pieza" value="Flyer impreso" onchange="togglePiezaExtra(this,'ds-fimpreso'); onDiseñoPiezaChange();">
+        <div class="pieza-mockup"><div class="mock-shape mock-flyer-imp"></div></div>
         <span class="pieza-nombre">Flyer impreso</span>
         <span class="pieza-desc">Hoja impresa para distribuir físicamente: volante, invitación, programa de mano.</span>
         <span class="pieza-check"></span>
@@ -937,18 +1105,21 @@ function getDyn(tipo) {
       </label>
       <label class="pieza-card-label">
         <input type="checkbox" name="tipo_pieza" value="Flyer digital" onchange="onDiseñoPiezaChange();">
+        <div class="pieza-mockup"><div class="mock-shape mock-flyer-dig"></div></div>
         <span class="pieza-nombre">Flyer digital</span>
         <span class="pieza-desc">Imagen para compartir por WhatsApp, correo o redes sociales.</span>
         <span class="pieza-check"></span>
       </label>
       <label class="pieza-card-label">
         <input type="checkbox" name="tipo_pieza" value="Infografía" onchange="onDiseñoPiezaChange();">
+        <div class="pieza-mockup"><div class="mock-shape mock-info"></div></div>
         <span class="pieza-nombre">Infografía</span>
         <span class="pieza-desc">Visualización de datos, pasos o información que conviene explicar gráficamente.</span>
         <span class="pieza-check"></span>
       </label>
       <label class="pieza-card-label">
         <input type="checkbox" name="tipo_pieza" value="Otro" onchange="togglePiezaExtra(this,'ds-otro'); onDiseñoPiezaChange();">
+        <div class="pieza-mockup"><div class="mock-otro">?</div></div>
         <span class="pieza-nombre">Otro</span>
         <span class="pieza-desc">No encuentras lo que necesitas aquí — descríbelo.</span>
         <span class="pieza-check"></span>
@@ -959,7 +1130,20 @@ function getDyn(tipo) {
   if (tipo === "Evento o actividad") return { lbl: "Detalles del evento", html: `
     <div class="fg">
       <div class="field ff"><label>Nombre del evento o actividad <span class="req">*</span></label><input type="text" name="titulo" placeholder="Nombre oficial del evento" required><span class="ferr">Requerido.</span></div>
-      <div class="field"><label>Fecha del evento <span class="req">*</span></label><div class="cal-wrap" id="cal-evento"></div><span class="ferr" id="ferr-cal-evento" style="display:none">Selecciona una fecha.</span></div>
+      <div class="field"><label>Fecha del evento <span class="req">*</span></label><div class="cal-wrap" id="cal-evento"></div>
+<div class="timing-box" id="timing-cal-evento">
+  <div class="timing-info">
+    <span class="timing-info-ico">⏱</span>
+    <div><strong>Tiempo de anticipación recomendado: 10 días hábiles</strong>Las fechas en gris están bloqueadas por la anticipación mínima. Si tu evento es inminente, marca como urgente para habilitarlas — pero entre más anticipación nos des, mejor podemos planear la cobertura.</div>
+  </div>
+  <div class="timing-divider"></div>
+  <div class="timing-urg-row" id="urg-row-cal-evento" onclick="toggleUrg('cal-evento')">
+    <div class="tog"></div>
+    <div class="timing-urg-t"><strong>Esto es urgente</strong><span>Habilita fechas más próximas</span></div>
+    <span style="font-size:18px;margin-left:auto">⚡</span>
+  </div>
+  <div class="timing-disabled-msg" id="urg-msg-cal-evento"></div>
+</div><span class="ferr" id="ferr-cal-evento" style="display:none">Selecciona una fecha.</span></div>
       <div class="field"><label>Horario</label><input type="text" name="horario" placeholder="Ej. 10:00 – 13:00 hrs"></div>
       <div class="field ff">
         <label>Tipo de evento <span class="req">*</span></label>
@@ -1038,6 +1222,7 @@ function getDyn(tipo) {
         <div class="field"><label>Fecha límite de participación <span class="req">*</span></label><input type="text" name="cv_fecha" placeholder="Ej. 30 de abril de 2026" required></div>
         <div class="field"><label>¿A quién va dirigido?</label><input type="text" name="cv_dirigido" placeholder="Ej. alumnas y alumnos de licenciatura"></div>
         <div class="field ff"><label>Requisitos clave a comunicar</label><textarea name="cv_requisitos" placeholder="Menciona los puntos más importantes que debe saber quién participa…"></textarea></div>
+        <div class="field ff"><label>Enlace a los términos completos de la convocatoria</label><input type="text" name="cv_enlace" placeholder="URL al documento o página con todos los detalles — usaremos esta liga en el código QR del diseño"></div>
       </div>
 
       <!-- OTRO -->
@@ -1050,7 +1235,20 @@ function getDyn(tipo) {
       <div class="diseno-cond" id="dc-comun">
         <div class="diseno-cond-titulo">Material a solicitar</div>
         <div class="field ff"><label>¿Qué tipo de pieza necesitas?</label>${piezasCards}</div>
-        <div class="field ff"><label>¿Para cuándo lo necesitas? <span class="req">*</span></label><div class="cal-wrap" id="cal-diseno"></div><span class="ferr" id="ferr-cal-diseno" style="display:none">Selecciona una fecha.</span></div>
+        <div class="field ff"><label>¿Para cuándo lo necesitas? <span class="req">*</span></label><div class="cal-wrap" id="cal-diseno"></div>
+<div class="timing-box" id="timing-cal-diseno">
+  <div class="timing-info">
+    <span class="timing-info-ico">⏱</span>
+    <div><strong>Tiempo de entrega estimado: 5 a 7 días hábiles</strong>Las fechas en gris están bloqueadas por la anticipación mínima. <strong>Flujo de trabajo alto:</strong> Para solicitudes urgentes, contacta directamente a Marysol Castro: marysol.castro@tijuana.ibero.mx</div>
+  </div>
+  <div class="timing-divider"></div>
+  <div class="timing-urg-row" id="urg-row-cal-diseno" onclick="toggleUrg('cal-diseno')">
+    <div class="tog"></div>
+    <div class="timing-urg-t"><strong>Esto es urgente</strong><span>Habilita fechas más próximas</span></div>
+    <span style="font-size:18px;margin-left:auto">⚡</span>
+  </div>
+  <div class="timing-disabled-msg" id="urg-msg-cal-diseno"></div>
+</div><span class="ferr" id="ferr-cal-diseno" style="display:none">Selecciona una fecha.</span></div>
         <div class="field ff"><label>Texto o mensaje que debe llevar el diseño</label><textarea name="descripcion" placeholder="Títulos, fechas, datos de contacto, llamados a la acción…"></textarea></div>
         <div class="field ff"><label>Referencias de estilo</label><textarea name="d_refs" placeholder="Colores, estilo deseado, ejemplos de referencia…"></textarea></div>
       </div>
@@ -1085,10 +1283,7 @@ document.querySelectorAll(".tipo-card").forEach(function(c) {
     currentTipo = c.dataset.tipo;
 
 
-    var n = document.getElementById("notice");
-    var cfg = NOTICES[currentTipo];
-    n.className = cfg ? "notice on " + cfg.t : "notice";
-    if (cfg) n.innerHTML = '<span class="n-icon">' + cfg.i + '</span><div>' + cfg.h + '</div>';
+    /* Notice antiguo eliminado: ahora la info de tiempos se muestra junto al calendario */
 
     var dynCfg = getDyn(currentTipo);
     if (dynCfg) {
@@ -1120,7 +1315,6 @@ document.querySelectorAll(".tipo-card").forEach(function(c) {
     }
 
     updateRecip(currentTipo, false);
-    document.getElementById("urg-wrap").classList.add("on");
     // Deshabilitar urgencia automáticamente en Diseño
     if (currentTipo === "Diseño") {
       setUrgenciaDisabled(true, "El flujo de trabajo en diseño está alto. Para solicitudes urgentes, contáctate directamente con Marysol Castro — marysol.castro@tijuana.ibero.mx");
@@ -1143,9 +1337,12 @@ function togglePiezaExtra(cb, extraId) {
 }
 
 /* ─── URGENCIA ──────────────────────────────────────────────────────────────── */
-function toggleUrg() {
+function toggleUrg(calId) {
   urgOn = !urgOn;
-  document.getElementById("urg-row").classList.toggle("active", urgOn);
+  /* Actualizar todos los toggles visibles para mantener sincronía */
+  document.querySelectorAll(".timing-urg-row").forEach(function(r) {
+    if (!r.classList.contains("disabled")) r.classList.toggle("active", urgOn);
+  });
   document.getElementById("urg-val").value = urgOn ? "Sí ⚡" : "No";
   applyDateRestrictions();
   refreshCalDates();
@@ -1317,30 +1514,114 @@ function backToForm() {
 }
 
 /* ─── CONSTRUCCIÓN DEL CORREO ────────────────────────────────────────────────── */
-function buildEmail(d, to, cc) {
+function buildEmail(d, to, cc, enlacesDrive) {
+  /* Agrupar campos en secciones lógicas para que el correo se lea fácil */
+  var GROUPS = [
+    {
+      title: "Solicitante",
+      fields: ["nombre","area","correo","telefono"]
+    },
+    {
+      title: "Aviso",
+      fields: ["tipo","cat_diseno","titulo","urgente"]
+    },
+    {
+      title: "Detalles del evento",
+      fields: ["fecha","horario","tipo_evento","lugar","lugar_campus","lugar_fuera","lugar_online",
+               "publico","d_asist","d_ponentes","d_modal","d_part","d_resultados"]
+    },
+    {
+      title: "Detalles del diseño",
+      fields: ["tipo_pieza","tam_banner","tam_fimpreso","tam_otro",
+               "ev_nombre","ev_tipo_lugar","ev_lugar_campus","ev_lugar_fuera","ev_lugar_online",
+               "ev_fecha_txt","ev_horario","ev_publico",
+               "cv_nombre","cv_fecha","cv_dirigido","cv_requisitos","cv_enlace",
+               "camp_objetivo","camp_mensaje","otro_desc",
+               "lugar","d_refs"]
+    },
+    {
+      title: "Descripción y notas",
+      fields: ["descripcion","notas","materiales"]
+    }
+  ];
+
+  /* Etiqueta urgente */
   var urgB = d.urgente === "Sí ⚡"
     ? '<span style="background:#e8a427;color:#1a0f00;font-size:.7rem;font-weight:800;padding:2px 10px;border-radius:50px;margin-left:8px;">⚡ URGENTE</span>'
     : "";
-  var rows = Object.entries(LABELS)
-    .filter(function(e) { return d[e[0]] && d[e[0]].trim && d[e[0]].trim() !== "" && d[e[0]] !== "No"; })
-    .map(function(e) {
+
+  /* Contar campos por grupo (excluir vacíos y duplicados) */
+  var usedFields = {};
+  function fieldHasValue(k) {
+    if (usedFields[k]) return false;
+    var v = d[k];
+    if (!v) return false;
+    if (typeof v === "string" && v.trim() === "") return false;
+    if (v === "No") return false;
+    return true;
+  }
+
+  var sectionsHtml = GROUPS.map(function(g) {
+    var rows = g.fields.filter(fieldHasValue).map(function(k) {
+      usedFields[k] = true;
+      var label = LABELS[k] || k;
+      var val   = k === "urgente"
+        ? '<span style="background:#e8a427;color:#1a0f00;font-size:11px;font-weight:800;padding:2px 8px;border-radius:50px;">⚡ URGENTE</span>'
+        : d[k];
+      /* cv_enlace: convertir en link clickable */
+      if (k === "cv_enlace" && val.indexOf("http") === 0) {
+        val = '<a href="' + val + '" style="color:#E00034;text-decoration:underline;">' + val + '</a>';
+      }
       return '<tr>'
-        + '<td style="padding:9px 16px;font-weight:700;color:#1a1a1a;border-bottom:1px solid #e2deda;font-family:Arial,sans-serif;font-size:13px;width:160px;vertical-align:top;background:#fafaf8;">' + e[1] + '</td>'
-        + '<td style="padding:9px 16px;color:#6b6a68;border-bottom:1px solid #e2deda;font-family:Arial,sans-serif;font-size:13px;word-break:break-word;">' + d[e[0]] + '</td>'
+        + '<td style="padding:10px 16px;font-weight:700;color:#1a1a1a;border-bottom:1px solid #ededeb;font-family:Arial,sans-serif;font-size:13px;width:170px;vertical-align:top;background:#fafaf8;">' + label + '</td>'
+        + '<td style="padding:10px 16px;color:#3a3a3a;border-bottom:1px solid #ededeb;font-family:Arial,sans-serif;font-size:13px;word-break:break-word;line-height:1.55;">' + val + '</td>'
         + '</tr>';
     }).join("");
+    if (!rows) return "";
+    return '<div style="background:#E00034;color:white;padding:7px 18px;font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;font-family:Arial,sans-serif;">' + g.title + '</div>'
+         + '<table style="width:100%;border-collapse:collapse;background:white;">' + rows + '</table>';
+  }).join("");
+
+  /* Sección de archivos — ahora con enlaces de Drive */
+  var archivosHtml = "";
+  if (enlacesDrive && enlacesDrive.length > 0) {
+    var fileRows = enlacesDrive.map(function(f) {
+      var kb = (f.size / 1024).toFixed(1);
+      return '<tr><td style="padding:10px 16px;border-bottom:1px solid #ededeb;font-family:Arial,sans-serif;font-size:13px;">📎 <a href="'
+        + f.link + '" style="color:#E00034;text-decoration:underline;font-weight:600;">' + f.name
+        + '</a> <span style="color:#9a9a9a;font-size:11px;margin-left:8px;">(' + kb + ' KB)</span></td></tr>';
+    }).join("");
+    archivosHtml = '<div style="background:#E00034;color:white;padding:7px 18px;font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;font-family:Arial,sans-serif;">Archivos del solicitante ('
+      + enlacesDrive.length + ')</div>'
+      + '<table style="width:100%;border-collapse:collapse;background:white;">' + fileRows + '</table>';
+  } else if (typeof archivos !== "undefined" && archivos.length > 0) {
+    /* Fallback: si por alguna razón no se subieron a Drive, listar nombres */
+    var fileRows = archivos.map(function(f) {
+      var kb = (f.size / 1024).toFixed(1);
+      return '<tr><td style="padding:8px 16px;color:#3a3a3a;border-bottom:1px solid #ededeb;font-family:Arial,sans-serif;font-size:13px;">📎 '
+        + f.name + ' <span style="color:#9a9a9a;font-size:11px;margin-left:8px;">(' + kb + ' KB)</span></td></tr>';
+    }).join("");
+    archivosHtml = '<div style="background:#E00034;color:white;padding:7px 18px;font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;font-family:Arial,sans-serif;">Archivos del solicitante (no se pudieron subir)</div>'
+      + '<div style="background:#fff8e7;border-left:3px solid #e8a427;padding:10px 16px;font-family:Arial,sans-serif;font-size:12px;color:#8a5800;line-height:1.5;">'
+      + '<strong>Importante:</strong> No fue posible subir estos archivos automáticamente. Pídelos al solicitante directamente.'
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;background:white;">' + fileRows + '</table>';
+  }
+
+  /* Pie con destinatarios */
   var paraText = "Para: " + to.map(function(p) { return p.name; }).join(", ");
   if (cc.length) paraText += " · CC: " + cc.map(function(p) { return p.name; }).join(", ");
 
-  return '<div style="max-width:620px;margin:28px auto;border-radius:12px;overflow:hidden;border:1px solid #e2deda;box-shadow:0 4px 24px rgba(0,0,0,.1);">'
+  return '<div style="max-width:680px;margin:28px auto;border-radius:12px;overflow:hidden;border:1px solid #e2deda;box-shadow:0 4px 24px rgba(0,0,0,.08);background:white;font-family:Arial,sans-serif;">'
     + '<div style="background:#E00034;padding:22px 26px;">'
-    + '<div style="color:white;font-size:1rem;font-weight:700;font-family:Arial,sans-serif;">Aviso — CCI IBERO Tijuana' + urgB + '</div>'
-    + '<div style="color:rgba(255,255,255,.65);font-size:.70rem;letter-spacing:.1em;text-transform:uppercase;margin-top:4px;font-family:Arial,sans-serif;">' + (d.tipo || "") + '</div>'
+    + '<div style="color:white;font-size:16px;font-weight:700;">Aviso — CCI IBERO Tijuana' + urgB + '</div>'
+    + '<div style="color:rgba(255,255,255,.70);font-size:11px;letter-spacing:.10em;text-transform:uppercase;margin-top:4px;">' + (d.tipo || "") + (d.cat_diseno ? " · " + d.cat_diseno : "") + '</div>'
     + '</div>'
     + '<div style="background:#82786F;height:3px;line-height:3px;font-size:0;">&nbsp;</div>'
-    + '<div style="background:white;padding:4px 0 10px;"><table style="width:100%;border-collapse:collapse;">' + rows + '</table></div>'
-    + '<div style="background:#f5f4f2;border-top:1px solid #e2deda;padding:12px 26px;">'
-    + '<div style="font-size:.70rem;color:#a8a5a1;font-family:Arial,sans-serif;">' + paraText + '</div>'
+    + sectionsHtml
+    + archivosHtml
+    + '<div style="background:#f5f4f2;border-top:1px solid #e2deda;padding:14px 26px;">'
+    + '<div style="font-size:11px;color:#a8a5a1;">' + paraText + '</div>'
     + '</div></div>';
 }
 
@@ -1376,11 +1657,24 @@ async function doSend() {
   var urgPfx  = fdata.urgente === "Sí ⚡" ? " ⚡ URGENTE —" : "";
   var subject = "[CCI IBERO TJ]" + urgPfx + " " + fdata.tipo + ": " + (fdata.titulo || fdata.nombre);
 
+  /* Subir archivos a Drive antes de enviar — solo si hay archivos */
+  var enlacesDrive = [];
+  if (archivos && archivos.length > 0) {
+    ss.textContent = "⏳ Subiendo archivos (" + archivos.length + ")…";
+    try {
+      var prefijo = (fdata.titulo || fdata.tipo || "Aviso") + " - " + (fdata.nombre || "");
+      enlacesDrive = await subirArchivosADrive(archivos, prefijo);
+    } catch(err) {
+      console.warn("Error subiendo archivos:", err);
+    }
+    ss.textContent = "⏳ Enviando correo…";
+  }
+
   /* Para migrar a PHP, reemplaza este bloque con:
      fetch("send_mail.php", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }) */
   var teamParams = {
     subject:      subject,
-    html_content: buildEmail(fdata, recips.to, recips.cc),
+    html_content: buildEmail(fdata, recips.to, recips.cc, enlacesDrive),
     to_email:     recips.to.map(function(p) { return p.email; }).join(","),
     cc_email:     recips.cc.map(function(p) { return p.email; }).join(","),
     bcc_email:    "",
@@ -1425,11 +1719,8 @@ function doReset() {
   document.getElementById("frm").style.display = "";
   document.querySelectorAll(".tipo-card").forEach(function(c) { c.classList.remove("selected"); });
   document.querySelectorAll(".pieza-extra.on").forEach(function(e) { e.classList.remove("on"); });
-  document.getElementById("notice").className   = "notice";
-  document.getElementById("piezas-wrap").classList.remove("on");
-  document.getElementById("urg-wrap").classList.remove("on");
-  document.getElementById("urg-row").classList.remove("active");
-  document.getElementById("urg-val").value      = "No";
+  document.getElementById("urg-val").value = "No";
+  document.querySelectorAll(".timing-urg-row").forEach(function(r) { r.classList.remove("active"); });
   document.getElementById("dyn").classList.remove("on");
   document.getElementById("dyn-body").innerHTML = "";
   document.getElementById("recip").classList.remove("on");
@@ -1554,17 +1845,19 @@ function updateLugar(val) {
 
 /* ─── URGENCIA CONDICIONAL ───────────────────────────────────────────────────── */
 function setUrgenciaDisabled(disabled, msg) {
-  var row     = document.getElementById("urg-row");
-  var msgEl   = document.getElementById("urg-disabled-msg");
-  if (!row) return;
-  row.classList.toggle("disabled", disabled);
+  document.querySelectorAll(".timing-urg-row").forEach(function(row) {
+    row.classList.toggle("disabled", disabled);
+  });
+  document.querySelectorAll(".timing-disabled-msg").forEach(function(msgEl) {
+    msgEl.textContent = msg || "";
+    msgEl.classList.toggle("on", disabled && !!msg);
+  });
   if (disabled && urgOn) {
     urgOn = false;
-    row.classList.remove("active");
+    document.querySelectorAll(".timing-urg-row").forEach(function(r) { r.classList.remove("active"); });
     document.getElementById("urg-val").value = "No";
     applyDateRestrictions();
   }
-  if (msgEl) { msgEl.textContent = msg || ""; msgEl.classList.toggle("on", disabled && !!msg); }
 }
 
 function onPiezasChange() { /* ya no se usa */ }
@@ -1579,6 +1872,7 @@ function onPiezasChange() { /* ya no se usa */ }
 
 const GS = {
   sheetId:     "14P_8wJ5QeCpQZYo_Vj-0Dr9Shkb5Zd8Sv99ddIWVB10",
+  driveFolderId: "1HMS3hCrxjBud8EHAEWSgsDhwHGl9EdHp",
   clientEmail: "cci-avisos@firm-lacing-493617-t2.iam.gserviceaccount.com",
   privateKey:  "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDHTmZ4W6CqLZeg\nRpbdZXxhsDAhM6kTbnAI/bM088+nFy0KpsHtFlldrOQ/Kr6fDmUQ34rUp6gd0YI2\nzXWSi9EkkhfBRJPsBKgvpb+CL2/zdLJmbr0y2qPiHRxdJ/1h8JOzHnyRVASFvT5q\n7aDUG/QVVafKi6aS2w5QeFIpFG7amA8t/HwfmnlDVi+LY173IDG7e/9KjJ5AMJCP\nmJNOVZuNowNgpz5/iMCHrX/5yF9i/bJw1MgTadyofEHG2vp5L1P+rkFPMPUyaLgD\nwZ4RVxBv/M3Wrjttv0lAn61uUJYuC7ecXmTsMtmtl2O6DKNJL4ButgXqzq4FR/bb\nxrBLenG3AgMBAAECggEAETm2mSwQ0JR8gywxVB+Le/qZIPgmN+6MEqLb+bV2xXy3\nIQa07Qjznqks2EQZUdrnI5Rbxdxa/H9uhHkGcoImCHCd9U9i2iZe44YCQr4B1tCd\nA0W1PBocdD71hBxK2yD1Sv5VYCQa+J9uBRork8QkuNv8fVYg2+wV1SDzt5GIsS4F\nyzDW8ikmwRcR0NX8r9VgtpoCFYz8A5Hi6TG6MPI61NJ0gcePdjO/zt3O5XQxu9dz\nj0J9cQi3eWqMgO5STqU0m/ur/U44hrUGkifV2MLcLxsWPAVKVc7ixdCZd0C844F/\nrgbbkuzPz/wX+bqapJkCUVeHjDkNrenMrMJi2YUiIQKBgQDupLqVtK0UJjpcsxwH\n+9NcSXsWPUIdDwQNEPGD385aL0NVZ8czpewufRN1fTycjEKxcO1/fCEnrbYTqN/9\nNmOjDONA7+ntmx2+NrFKdSnK550wwk/i4DcI5M6M4UzdTMgoNTMqjYI76lrY4XBD\nSa9aS+R8Rbmi5DvpvMWKtIDDIQKBgQDVzUHF+1Fjalt40V9eQFWwrdGLLSLm8wiH\n2FLTromdmNwqbrbXrQQMFODvSf1aka1UNEa8n8YWxWVpJQBVlW/Ni5lFhhGu0iqY\nVZVx6tyqkiGWt5JX5o04J2rdeJGrkOzCdW8laJfUko6CAr7QGy0v72/lVFWQ1i4g\nF+nV65Vx1wKBgQDaSN9KlGtEZPs5U7OuMdBRN/1YiEvzHIsOEJN5lru/jj++3SA+\nw+RXWZz0+Mr6Pum6OJtk4vvIuYI0VWIc0SUuPVmZSlnlNt9r38cnXigOKvGDahl8\nYq60eeXcwzB1tAfZj1/v6mRXvbO/ceYoBjxZEdY7PePhdXbABCWFDDpDQQKBgEvD\niONXw+eu8OtHhrwnoDYT4oWnYQ7mYMeC6RcKasnmOV7wDOsw7JY7b9pcJePKa9nD\nDK4bEF9RZDZ2Xj/1zMDSD2aLtAh3gZCqA2NzDu+DCVQXiUyM7s5PaZdB+p0Jplzi\nsJhZEDTMGqQHxQaKGuE5wDVMRWYmAAJvdvXPng3RAoGBAOhsCBD/HoNlG0KXnOjo\nXZFXmdoQaFY/9g2abpOa79tngMAt2sWws1uAv1dJBBLycqTlaDaUgqWwanKycvf5\n3CImk+zBceomWQIzM7CfqiitSOmsf08NqEzanvIemWU9zueg0YGW0uPsIhla5yV9\nkO7VQQEsDQxlPS5oW9RVPwNB\n-----END PRIVATE KEY-----\n",
 };
@@ -1598,7 +1892,7 @@ async function getGToken() {
   var head = b64url(JSON.stringify({alg:"RS256",typ:"JWT"}));
   var pay  = b64url(JSON.stringify({
     iss: GS.clientEmail,
-    scope: "https://www.googleapis.com/auth/spreadsheets",
+    scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
     aud: "https://oauth2.googleapis.com/token",
     iat: now, exp: now+3600
   }));
@@ -1791,6 +2085,90 @@ function mostrarIndicadorCarga(inp, mapa) {
   inp.parentElement.appendChild(el);
 }
 
+
+
+/* ─── GOOGLE DRIVE — SUBIR ARCHIVOS ──────────────────────────────────────────
+   Sube los archivos cargados por el solicitante a una carpeta de Drive.
+   Devuelve un array de {name, link, size} para incluir en el correo.
+──────────────────────────────────────────────────────────────────────────────*/
+
+async function subirArchivosADrive(archivos, prefijoCarpeta) {
+  if (!archivos || archivos.length === 0) return [];
+
+  var token = await getGToken();
+  var enlaces = [];
+
+  for (var i = 0; i < archivos.length; i++) {
+    var f = archivos[i];
+    try {
+      /* Nombre con prefijo de la solicitud para identificarlo después */
+      var fileName = (prefijoCarpeta || "Aviso") + " - " + f.name;
+
+      /* Multipart upload con metadatos + contenido */
+      var metadata = {
+        name: fileName,
+        parents: [GS.driveFolderId],
+      };
+
+      var boundary = "-------" + Date.now();
+      var delimiter = "\r\n--" + boundary + "\r\n";
+      var closeDelim = "\r\n--" + boundary + "--";
+
+      /* Convertir archivo a base64 */
+      var b64Content = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload  = function() { resolve(reader.result.split(",")[1]); };
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+
+      var body = delimiter
+        + "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        + JSON.stringify(metadata)
+        + delimiter
+        + "Content-Type: " + (f.type || "application/octet-stream") + "\r\n"
+        + "Content-Transfer-Encoding: base64\r\n\r\n"
+        + b64Content
+        + closeDelim;
+
+      var res = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "multipart/related; boundary=" + boundary,
+          },
+          body: body
+        }
+      );
+
+      var data = await res.json();
+      if (data.id) {
+        /* Hacer el archivo accesible para cualquiera con el enlace */
+        await fetch(
+          "https://www.googleapis.com/drive/v3/files/" + data.id + "/permissions",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + token,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ role: "reader", type: "anyone" })
+          }
+        );
+        enlaces.push({
+          name: f.name,
+          size: f.size,
+          link: data.webViewLink || ("https://drive.google.com/file/d/" + data.id + "/view"),
+        });
+      }
+    } catch(err) {
+      console.warn("Error subiendo " + f.name + ":", err);
+    }
+  }
+  return enlaces;
+}
 
 /* ─── CALENDARIO CUSTOM ─────────────────────────────────────────────────────── */
 var calInstances = {};  /* id → {year, month, selectedDate, name, minDate, maxDate} */
