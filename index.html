@@ -1019,6 +1019,13 @@ async function subirArchivosADrive(archivos, prefijoCarpeta) {
     <div class="s-icon">✅</div>
     <h2>Aviso <strong>enviado</strong></h2>
     <p>Ya lo tenemos. Nos pondremos en contacto si necesitamos algo más.</p>
+    <!-- El folio sale sólo si la bandeja lo acepto. Si LA PIZARRA no
+         contesto, el aviso igual se mando por correo y no tiene caso
+         enseñar un numero que no va a servir para preguntar. -->
+    <p id="folio-caja" style="display:none;margin-top:14px;font-size:.88rem;color:#6b6a68">
+      Folio de seguimiento:
+      <strong id="folio-txt" style="color:#E00034;letter-spacing:.08em;font-family:monospace"></strong>
+    </p>
     <button type="button" class="btn btn-red" onclick="doReset()" style="margin-top:12px">Nuevo aviso</button>
   </div>
 
@@ -1702,6 +1709,70 @@ function buildConfirmEmail(d) {
     + '</div></div>';
 }
 
+/* ─── LA BANDEJA DE LA PIZARRA ───────────────────────────────────────────────
+   Ademas del correo, la solicitud se deposita en LA PIZARRA, donde el
+   equipo la acepta o la descarta. Al aceptarla nace ahi el evento o la
+   pieza, y se acaba el volver a teclear a mano lo que el area ya
+   escribio aqui.
+
+   LA LLAVE ES PUBLICA A PROPOSITO
+   Es la llave publicable de Supabase, hecha para vivir en el navegador
+   de cualquiera. Lo que protege la bandeja no es esconderla: es la
+   politica de la base, que a quien entra sin cuenta solo le deja
+   DEJAR una solicitud --pendiente, con folio bien formado y de tamaño
+   acotado-- y no leer la lista, ni modificar nada, ni borrar.
+
+   SI ESTO FALLA, NO PASA NADA
+   El correo sigue siendo el canal principal y ya se mando. Un fallo
+   aqui se anota en la consola y se sigue: lo que no puede ocurrir es
+   que el aviso se pierda porque la bandeja estaba caida.
+   ──────────────────────────────────────────────────────────────────────── */
+var PIZARRA = {
+  url:   "https://wrezcukptrtmnhnlxmao.supabase.co",
+  llave: "sb_publishable_XTkkarWw-P3Ls31g5ZDTOA_ZghkWshN",
+};
+
+/* Ocho caracteres sin las letras que se confunden al dictarlas por
+   telefono: sin I, sin O, sin cero y sin uno. El mismo alfabeto que
+   los codigos de revision del generador de piezas. */
+function folioNuevo() {
+  var abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", f = "";
+  var r = new Uint32Array(8);
+  (window.crypto || window.msCrypto).getRandomValues(r);
+  for (var i = 0; i < 8; i++) f += abc[r[i] % abc.length];
+  return f;
+}
+
+async function guardarEnPizarra(d, enlaces) {
+  var folio = folioNuevo();
+  var fila = {
+    folio:   folio,
+    tipo:    d.tipo    || "",
+    titulo:  (d.titulo || d.tipo || "Sin titulo").slice(0, 200),
+    area:    (d.area   || "").slice(0, 140),
+    de:      (d.nombre || "").slice(0, 140),
+    correo:  (d.correo || "").slice(0, 140),
+    urgente: d.urgente === "Sí ⚡",
+    fecha:   d.fecha || null,
+    /* Todo lo capturado, mas los enlaces de Drive: quien lo acepte en
+       LA PIZARRA tiene ahi el material sin volver al correo. */
+    datos:   Object.assign({}, d, { archivos: enlaces || [] }),
+  };
+
+  var r = await fetch(PIZARRA.url + "/rest/v1/solicitudes", {
+    method: "POST",
+    headers: {
+      apikey: PIZARRA.llave,
+      Authorization: "Bearer " + PIZARRA.llave,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(fila),
+  });
+  if (!r.ok) throw new Error("La Pizarra respondio " + r.status + ": " + await r.text());
+  return folio;
+}
+
 /* ─── ENVÍO ──────────────────────────────────────────────────────────────────── */
 async function doSend() {
   var recips = getRecipsForData(fdata);
@@ -1750,6 +1821,17 @@ async function doSend() {
     await emailjs.send("service_dixokk6", "template_3ibijhm", teamParams);
     await emailjs.send("service_dixokk6", "template_3ibijhm", confirmParams);
     guardarEnSheets(fdata); /* registro asíncrono — no bloquea el flujo */
+
+    /* La bandeja, igual: el correo ya salio y eso es lo que no puede
+       fallar. Si esto truena, se anota y se sigue sin folio. */
+    try {
+      var folio = await guardarEnPizarra(fdata, enlacesDrive);
+      document.getElementById("folio-txt").textContent = folio;
+      document.getElementById("folio-caja").style.display = "";
+    } catch (err) {
+      console.warn("No se pudo dejar la solicitud en La Pizarra:", err);
+    }
+
     document.getElementById("review-panel").classList.remove("on");
     document.getElementById("success").classList.add("on");
     document.getElementById("steps").style.display = "none";
