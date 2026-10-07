@@ -1040,19 +1040,39 @@ async function subirArchivosADrive(archivos, prefijoCarpeta) {
 /* ─── CONFIGURACIÓN ─────────────────────────────────────────────────────────── */
 emailjs.init("OsE5ud5yypn13z0FL");
 
+/* EL EQUIPO, A OCTUBRE DE 2026
+
+   Cambio de manos respecto a la version anterior:
+     Diseño Grafico   Leo  -> Silvia Lizarraga
+     Foto y Video     Jonatan Mayen -> Leo
+     Redaccion/Medios Aline Renteria -> VACANTE, la cubre Marysol
+
+   La ranura de medios se deja aparte aunque hoy apunte a Marysol.
+   Cuando entre alguien, se cambia UN renglon y el enrutamiento
+   completo le empieza a llegar; si se hubiera borrado la ranura y
+   repartido sus solicitudes entre los demas, habria que rehacer
+   todo el ROUTING para dar marcha atras. */
 const TEAM = {
-  coord:     { name: "Marysol Castro",    role: "Coordinadora",          email: "marysol.castro@tijuana.ibero.mx"  },
-  disenio:   { name: "Leonardo González", role: "Diseño Gráfico",        email: "leonardo.gonzalez@tijuana.ibero.mx" },
-  redes:     { name: "Sergio Mancilla",   role: "Redes y Web",           email: "sergio.mancilla@tijuana.ibero.mx"  },
-  contenido: { name: "Jonatan Mayen",     role: "Foto, Video y Eventos", email: "jonatan.mayen@tijuana.ibero.mx"    },
-  redactora: { name: "Aline Rentería",    role: "Redacción y Medios",    email: "aline.renteria@tijuana.ibero.mx"   },
+  coord:     { name: "Marysol Castro",    role: "Coordinadora",       email: "marysol.castro@tijuana.ibero.mx"   },
+  disenio:   { name: "Silvia Lizárraga",  role: "Diseño Gráfico",     email: "silvia.lizarraga@tijuana.ibero.mx" },
+  redes:     { name: "Sergio Mancilla",   role: "Redes y Web",        email: "sergio.mancilla@tijuana.ibero.mx"  },
+  contenido: { name: "Leonardo González", role: "Foto y Video",       email: "leonardo.gonzalez@tijuana.ibero.mx" },
+  /* Vacante. Mientras, la jefatura. */
+  medios:    { name: "Marysol Castro",    role: "Redacción y Medios", email: "marysol.castro@tijuana.ibero.mx"   },
 };
 
+/* La jefatura va en copia en TODAS las solicitudes, sin excepcion y
+   sin depender de que alguien se acuerde de ponerla en cada regla
+   del ROUTING. Se aplica en getRecipsForData(). */
+const SIEMPRE_EN_COPIA = [TEAM.coord];
+
+/* A quien le toca cada tipo. La jefatura NO hace falta escribirla
+   aqui: se agrega sola en copia mas abajo. */
 const ROUTING = {
-  "Evento o actividad":       { to: [TEAM.coord], cc: [TEAM.contenido, TEAM.redactora, TEAM.redes] },
-  "Diseño":                   { to: [TEAM.disenio], cc: [TEAM.coord] },
-  "Actividad que ya ocurrió": { to: [TEAM.coord, TEAM.redactora], cc: [TEAM.redes] },
-  "Otro":                     { to: [TEAM.coord], cc: [] },
+  "Evento o actividad":       { to: [TEAM.contenido], cc: [TEAM.medios, TEAM.redes] },
+  "Diseño":                   { to: [TEAM.disenio],   cc: [] },
+  "Actividad que ya ocurrió": { to: [TEAM.medios],    cc: [TEAM.redes] },
+  "Otro":                     { to: [TEAM.coord],     cc: [] },
 };
 
 const NOTICES = {
@@ -1079,7 +1099,7 @@ const LABELS = {
 let urgOn = false, fdata = {}, currentTipo = "", archivos = [];
 
 /* ─── DIRECTORIO ────────────────────────────────────────────────────────────── */
-var DIR = [{"n": "castro guajardo marysol elideth", "nd": "Castro Guajardo Marysol Elideth", "a": "Admisiones"}, {"n": "alvarez molina frida emili", "nd": "Álvarez Molina Frida Emili", "a": "Admisiones"}, {"n": "gameros plascencia felipe de jesus", "nd": "Gameros Plascencia Felipe de Jesús", "a": "Admisiones"}, {"n": "lopez fuentes maria guadalupe", "nd": "López Fuentes María Guadalupe", "a": "Admisiones"}, {"n": "ubaldo calderon veronica", "nd": "Ubaldo Calderón Verónica", "a": "Auditoría"}, {"n": "ketchul becerra jesus humberto", "nd": "Ketchul Becerra Jesús Humberto", "a": "Biblioteca Loyola"}, {"n": "covarrubias aispuro maria de los angeles", "nd": "Covarrubias Aispuro María de los Ángeles", "a": "Biblioteca Loyola"}, {"n": "ducreox corral angel rafael", "nd": "Ducreox Corral Ángel Rafael", "a": "Biblioteca Loyola"}, {"n": "murillo leon laura elena", "nd": "Murillo León Laura Elena", "a": "Biblioteca Loyola"}, {"n": "palacios flores gabriela", "nd": "Palacios Flores Gabriela", "a": "Biblioteca Loyola"}, {"n": "ramos estrada juan jose", "nd": "Ramos Estrada Juan José", "a": "Biblioteca Loyola"}, {"n": "bautista guzman johana sofia", "nd": "Bautista Guzmán Johana Sofía", "a": "Calidad y Servicios Educativos"}, {"n": "gallardo medina sonia", "nd": "Gallardo Medina Sonia", "a": "Calidad y Servicios Educativos"}, {"n": "vargas corral gustavo adolfo", "nd": "Vargas Corral Gustavo Adolfo", "a": "Calidad y Servicios Educativos"}, {"n": "yanagui flores jesus yoshiho", "nd": "Yanagui Flores Jesús Yoshiho", "a": "Calidad y Servicios Educativos"}, {"n": "bautista olvera jorge", "nd": "Bautista Olvera Jorge", "a": "Administración y Negocios Sostenibles"}, {"n": "perez caudillo alejandro", "nd": "Pérez Caudillo Alejandro", "a": "Administración y Negocios Sostenibles"}, {"n": "sastree medina damary", "nd": "Sastree Medina Damary", "a": "Administración y Negocios Sostenibles"}, {"n": "paz rodriguez cinthya lorena", "nd": "Paz Rodríguez Cinthya Lorena", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "crabtree garcia anneliesse margarita", "nd": "Crabtree García Anneliesse Margarita", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "delgadillo becerra claudia margarita", "nd": "Delgadillo Becerra Claudia Margarita", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "franco lopez luis tadeo", "nd": "Franco López Luis Tadeo", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "gamez rodriguez zuehellen georgina", "nd": "Gámez Rodríguez Zuehellen Georgina", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "puga carranza maria esther", "nd": "Puga Carranza María Esther", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "caballero solano victor manuel", "nd": "Caballero Solano Víctor Manuel", "a": "Bienestar y Cuidado de la Salud"}, {"n": "ruiz valenzuela roxana elizabeth", "nd": "Ruiz Valenzuela Roxana Elizabeth", "a": "Bienestar y Cuidado de la Salud"}, {"n": "salcido martinez yolva yunue", "nd": "Salcido Martínez Yolva Yunue", "a": "Bienestar y Cuidado de la Salud"}, {"n": "valencia manzo daniel", "nd": "Valencia Manzo Daniel", "a": "Bienestar y Cuidado de la Salud"}, {"n": "gomez tagle bravo cinthya erika", "nd": "Gómez Tagle Bravo Cinthya Erika", "a": "Ciencias Sociales y Humanidades"}, {"n": "avalos gonzalez juan manuel", "nd": "Ávalos González Juan Manuel", "a": "Ciencias Sociales y Humanidades"}, {"n": "hernandez frayre monica", "nd": "Hernández Frayre Mónica", "a": "Ciencias Sociales y Humanidades"}, {"n": "velazquez velazquez blanca leticia", "nd": "Velázquez Velázquez Blanca Leticia", "a": "Ciencias Sociales y Humanidades"}, {"n": "obregon davis sarah alexandra", "nd": "Obregón Davis Sarah Alexandra", "a": "Dirección Académica"}, {"n": "morales pino loraine", "nd": "Morales Pino Loraine", "a": "Dirección Académica"}, {"n": "martinez mendez miguel angel", "nd": "Martínez Méndez Miguel Ángel", "a": "Dirección de Administración y Finanzas"}, {"n": "diaz sanchez louise", "nd": "Díaz Sánchez Louise", "a": "Dirección de Administración y Finanzas"}, {"n": "ocampo marin veronica", "nd": "Ocampo Marín Verónica", "a": "Infraestructura y Servicios Generales"}, {"n": "acosta sensen jorge adan", "nd": "Acosta Sensen Jorge Adán", "a": "Infraestructura y Servicios Generales"}, {"n": "acevedo camacena ema", "nd": "Acevedo Camacena Ema", "a": "Recursos Humanos"}, {"n": "avila hernandez lizbeth", "nd": "Ávila Hernández Lizbeth", "a": "Recursos Humanos"}, {"n": "enriquez delgado hector", "nd": "Enríquez Delgado Héctor", "a": "Recursos Humanos"}, {"n": "gonzalez martinez leonardo", "nd": "González Martínez Leonardo", "a": "Comunicación y Crecimiento Institucional"}, {"n": "mancilla sergio", "nd": "Mancilla Sergio", "a": "Comunicación y Crecimiento Institucional"}, {"n": "mayen jonatan", "nd": "Mayen Jonatan", "a": "Comunicación y Crecimiento Institucional"}, {"n": "renteria aline", "nd": "Rentería Aline", "a": "Comunicación y Crecimiento Institucional"}];
+var DIR = [{"n": "castro guajardo marysol elideth", "nd": "Castro Guajardo Marysol Elideth", "a": "Admisiones"}, {"n": "alvarez molina frida emili", "nd": "Álvarez Molina Frida Emili", "a": "Admisiones"}, {"n": "gameros plascencia felipe de jesus", "nd": "Gameros Plascencia Felipe de Jesús", "a": "Admisiones"}, {"n": "lopez fuentes maria guadalupe", "nd": "López Fuentes María Guadalupe", "a": "Admisiones"}, {"n": "ubaldo calderon veronica", "nd": "Ubaldo Calderón Verónica", "a": "Auditoría"}, {"n": "ketchul becerra jesus humberto", "nd": "Ketchul Becerra Jesús Humberto", "a": "Biblioteca Loyola"}, {"n": "covarrubias aispuro maria de los angeles", "nd": "Covarrubias Aispuro María de los Ángeles", "a": "Biblioteca Loyola"}, {"n": "ducreox corral angel rafael", "nd": "Ducreox Corral Ángel Rafael", "a": "Biblioteca Loyola"}, {"n": "murillo leon laura elena", "nd": "Murillo León Laura Elena", "a": "Biblioteca Loyola"}, {"n": "palacios flores gabriela", "nd": "Palacios Flores Gabriela", "a": "Biblioteca Loyola"}, {"n": "ramos estrada juan jose", "nd": "Ramos Estrada Juan José", "a": "Biblioteca Loyola"}, {"n": "bautista guzman johana sofia", "nd": "Bautista Guzmán Johana Sofía", "a": "Calidad y Servicios Educativos"}, {"n": "gallardo medina sonia", "nd": "Gallardo Medina Sonia", "a": "Calidad y Servicios Educativos"}, {"n": "vargas corral gustavo adolfo", "nd": "Vargas Corral Gustavo Adolfo", "a": "Calidad y Servicios Educativos"}, {"n": "yanagui flores jesus yoshiho", "nd": "Yanagui Flores Jesús Yoshiho", "a": "Calidad y Servicios Educativos"}, {"n": "bautista olvera jorge", "nd": "Bautista Olvera Jorge", "a": "Administración y Negocios Sostenibles"}, {"n": "perez caudillo alejandro", "nd": "Pérez Caudillo Alejandro", "a": "Administración y Negocios Sostenibles"}, {"n": "sastree medina damary", "nd": "Sastree Medina Damary", "a": "Administración y Negocios Sostenibles"}, {"n": "paz rodriguez cinthya lorena", "nd": "Paz Rodríguez Cinthya Lorena", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "crabtree garcia anneliesse margarita", "nd": "Crabtree García Anneliesse Margarita", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "delgadillo becerra claudia margarita", "nd": "Delgadillo Becerra Claudia Margarita", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "franco lopez luis tadeo", "nd": "Franco López Luis Tadeo", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "gamez rodriguez zuehellen georgina", "nd": "Gámez Rodríguez Zuehellen Georgina", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "puga carranza maria esther", "nd": "Puga Carranza María Esther", "a": "Arquitectura, Diseño e Ingenierías"}, {"n": "caballero solano victor manuel", "nd": "Caballero Solano Víctor Manuel", "a": "Bienestar y Cuidado de la Salud"}, {"n": "ruiz valenzuela roxana elizabeth", "nd": "Ruiz Valenzuela Roxana Elizabeth", "a": "Bienestar y Cuidado de la Salud"}, {"n": "salcido martinez yolva yunue", "nd": "Salcido Martínez Yolva Yunue", "a": "Bienestar y Cuidado de la Salud"}, {"n": "valencia manzo daniel", "nd": "Valencia Manzo Daniel", "a": "Bienestar y Cuidado de la Salud"}, {"n": "gomez tagle bravo cinthya erika", "nd": "Gómez Tagle Bravo Cinthya Erika", "a": "Ciencias Sociales y Humanidades"}, {"n": "avalos gonzalez juan manuel", "nd": "Ávalos González Juan Manuel", "a": "Ciencias Sociales y Humanidades"}, {"n": "hernandez frayre monica", "nd": "Hernández Frayre Mónica", "a": "Ciencias Sociales y Humanidades"}, {"n": "velazquez velazquez blanca leticia", "nd": "Velázquez Velázquez Blanca Leticia", "a": "Ciencias Sociales y Humanidades"}, {"n": "obregon davis sarah alexandra", "nd": "Obregón Davis Sarah Alexandra", "a": "Dirección Académica"}, {"n": "morales pino loraine", "nd": "Morales Pino Loraine", "a": "Dirección Académica"}, {"n": "martinez mendez miguel angel", "nd": "Martínez Méndez Miguel Ángel", "a": "Dirección de Administración y Finanzas"}, {"n": "diaz sanchez louise", "nd": "Díaz Sánchez Louise", "a": "Dirección de Administración y Finanzas"}, {"n": "ocampo marin veronica", "nd": "Ocampo Marín Verónica", "a": "Infraestructura y Servicios Generales"}, {"n": "acosta sensen jorge adan", "nd": "Acosta Sensen Jorge Adán", "a": "Infraestructura y Servicios Generales"}, {"n": "acevedo camacena ema", "nd": "Acevedo Camacena Ema", "a": "Recursos Humanos"}, {"n": "avila hernandez lizbeth", "nd": "Ávila Hernández Lizbeth", "a": "Recursos Humanos"}, {"n": "enriquez delgado hector", "nd": "Enríquez Delgado Héctor", "a": "Recursos Humanos"}, {"n": "gonzalez martinez leonardo", "nd": "González Martínez Leonardo", "a": "Comunicación y Crecimiento Institucional"}, {"n": "mancilla sergio", "nd": "Mancilla Sergio", "a": "Comunicación y Crecimiento Institucional"}, {"n": "lizarraga silvia", "nd": "Lizárraga Silvia", "a": "Comunicación y Crecimiento Institucional"}];
 
 /* ─── CAMPOS DINÁMICOS POR TIPO ─────────────────────────────────────────────── */
 function getDyn(tipo) {
@@ -1379,19 +1399,28 @@ function applyDateRestrictions() {
 }
 
 /* ─── DESTINATARIOS ──────────────────────────────────────────────────────────── */
+/* LA VISTA PREVIA PREGUNTA LO MISMO QUE EL ENVIO
+
+   Antes esta funcion repetia el enrutamiento por su cuenta para
+   pintar las fichitas. Dos copias de la misma regla se separan
+   siempre: esta no sabia de la copia a la jefatura ni deduplicaba,
+   asi que ahora que medios y coordinacion son la misma persona
+   habria enseñado a Marysol dos veces.
+
+   Ahora llama a getRecipsForData(), que es la que de verdad decide
+   a quien se le manda. Lo que se ve es lo que sale. */
 function updateRecip(tipo, checkPiezas) {
-  var r = ROUTING[tipo];
-  if (!r) return;
-  var to = r.to.slice();
-  var cc = r.cc.slice();
+  if (!ROUTING[tipo]) return;
+  var hayPiezas = document.querySelectorAll("input[name='piezas']:checked").length > 0;
+  var r = getRecipsForData({ tipo: tipo, piezas: hayPiezas ? "si" : "" });
 
-
-
-  document.getElementById("chips").innerHTML = to.map(function(p) {
-    return '<span class="chip">' + p.name + '</span>';
-  }).concat(cc.map(function(p) {
-    return '<span class="chip">' + p.name + '</span>';
-  })).join("");
+  var ficha = function(p, enCopia) {
+    return '<span class="chip">' + p.name +
+           (enCopia ? ' <small style="opacity:.6">copia</small>' : '') + '</span>';
+  };
+  document.getElementById("chips").innerHTML =
+    r.to.map(function(p) { return ficha(p, false); })
+      .concat(r.cc.map(function(p) { return ficha(p, true); })).join("");
   document.getElementById("recip").classList.add("on");
 }
 
@@ -1399,10 +1428,37 @@ function getRecipsForData(d) {
   var tipo = d.tipo;
   var base = ROUTING[tipo] || { to: [TEAM.coord], cc: [] };
   var to   = base.to.slice();
-  var cc   = base.cc.slice();
-  if (tipo === "Evento o actividad" && d.piezas) {
-    if (!cc.some(function(p) { return p.name === TEAM.disenio.name; })) cc = cc.concat([TEAM.disenio]);
-  }
+  var cc   = base.cc.slice().concat(SIEMPRE_EN_COPIA);
+
+  if (tipo === "Evento o actividad" && d.piezas) cc = cc.concat([TEAM.disenio]);
+
+  /* SE DEDUPLICA POR CORREO, NO POR NOMBRE
+
+     Dos ranuras pueden apuntar a la MISMA persona --hoy medios y
+     coordinacion son las dos Marysol-- y entonces su correo salia
+     repetido, a veces en Para y en Copia a la vez. Comparar por
+     nombre no bastaba: una ranura nueva con el nombre escrito
+     distinto habria colado el duplicado igual.
+
+     Para gana sobre Copia: a quien le toca hacerlo va en Para, y
+     no se le repite abajo. */
+  var vistos = {};
+  var limpiar = function(lista) {
+    return lista.filter(function(p) {
+      var c = (p.email || "").toLowerCase();
+      if (!c || vistos[c]) return false;
+      vistos[c] = true;
+      return true;
+    });
+  };
+  to = limpiar(to);
+  cc = limpiar(cc);
+
+  /* Si el tipo no tiene a nadie asignado, la jefatura lo recibe en
+     Para: una solicitud sin destinatario no se manda a nadie. */
+  if (!to.length) { to = [TEAM.coord]; cc = cc.filter(function(p) {
+    return p.email.toLowerCase() !== TEAM.coord.email.toLowerCase(); }); }
+
   return { to: to, cc: cc };
 }
 
